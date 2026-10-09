@@ -3,3 +3,4 @@ dist/
 .vscode-test/
 .superpowers/
 *.vsix
+__pycache__/

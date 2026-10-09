@@ -1,4 +1,6 @@
 src/**
+dist/integration.js
+.gitignore
 test/**
 docs/**
 node_modules/**

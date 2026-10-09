@@ -4,6 +4,10 @@
   "description": "Read-only local DAG preview for Kubeflow Pipelines",
   "version": "0.1.0",
   "publisher": "tolgatuncoglu",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tolgatuncoglu/kfp_local_visualization.git"
+  },
   "private": true,
   "engines": {
     "vscode": "^1.96.0"
@@ -13,7 +17,9 @@
     "onCommand:kfpDagPreview.previewPython",
     "onCommand:kfpDagPreview.previewYaml"
   ],
-  "extensionKind": ["workspace"],
+  "extensionKind": [
+    "workspace"
+  ],
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
@@ -22,12 +28,22 @@
   },
   "contributes": {
     "commands": [
-      { "command": "kfpDagPreview.previewPython", "title": "KFP: Preview DAG" },
-      { "command": "kfpDagPreview.previewYaml", "title": "KFP: Preview Compiled DAG" }
+      {
+        "command": "kfpDagPreview.previewPython",
+        "title": "KFP: Preview DAG"
+      },
+      {
+        "command": "kfpDagPreview.previewYaml",
+        "title": "KFP: Preview Compiled DAG"
+      }
     ],
     "menus": {
       "editor/title": [
-        { "command": "kfpDagPreview.previewPython", "when": "resourceLangId == python", "group": "navigation" }
+        {
+          "command": "kfpDagPreview.previewPython",
+          "when": "resourceLangId == python",
+          "group": "navigation"
+        }
       ]
     },
     "configuration": {
@@ -54,7 +70,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "@types/vscode": "^1.140.0",
+    "@types/vscode": "1.96.0",
     "@vscode/python-extension": "^1.0.6",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
