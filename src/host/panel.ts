@@ -56,6 +56,10 @@ export class DagPanel {
     void this.panel.webview.postMessage({ type: 'sizeWarning', nodeCount, edgeCount });
   }
 
+  reveal(): void {
+    this.panel.reveal();
+  }
+
   dispose(): void {
     this.panel.dispose();
   }

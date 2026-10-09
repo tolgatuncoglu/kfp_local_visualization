@@ -14,7 +14,7 @@ function deferred<T>() {
 }
 
 function harness(load: (signal: AbortSignal) => Promise<PipelineGraph> = async () => sample) {
-  let saved: (uri: string) => void = () => {};
+  let changed: () => void = () => {};
   const subscription = { dispose: vi.fn() };
   const panel = {
     showLoading: vi.fn(),
@@ -26,10 +26,10 @@ function harness(load: (signal: AbortSignal) => Promise<PipelineGraph> = async (
     sourceUri: 'file:///work/pipeline.py',
     load,
     panel,
-    subscribeSave: (listener) => { saved = listener; return subscription; },
+    subscribeChanges: (listener) => { changed = listener; return subscription; },
     debounceMs: 250,
   });
-  return { controller, panel, saved: (uri: string) => saved(uri), subscription };
+  return { controller, panel, changed: () => changed(), subscription };
 }
 
 afterEach(() => vi.useRealTimers());
@@ -42,13 +42,23 @@ describe('PreviewController', () => {
     await h.controller.start();
     expect(load).toHaveBeenCalledTimes(1);
     expect(h.panel.showGraph).toHaveBeenCalledTimes(1);
-    h.saved('file:///work/other.py');
-    await vi.advanceTimersByTimeAsync(300);
-    expect(load).toHaveBeenCalledTimes(1);
-    h.saved('file:///work/pipeline.py');
+    h.changed();
     await vi.advanceTimersByTimeAsync(249);
     expect(load).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('coalesces a burst of save and watcher events into one compile', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn(async () => sample);
+    const h = harness(load);
+    await h.controller.start();
+    h.changed();
+    await vi.advanceTimersByTimeAsync(100);
+    h.changed();
+    h.changed();
+    await vi.advanceTimersByTimeAsync(1000);
     expect(load).toHaveBeenCalledTimes(2);
   });
 
@@ -59,7 +69,7 @@ describe('PreviewController', () => {
     const load = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const h = harness(load);
     const initial = h.controller.start();
-    h.saved('file:///work/pipeline.py');
+    h.changed();
     await vi.advanceTimersByTimeAsync(250);
     second.resolve(sample);
     await Promise.resolve();
@@ -85,7 +95,7 @@ describe('PreviewController', () => {
     const h = harness(load);
     await h.controller.start();
     h.controller.dispose();
-    h.saved('file:///work/pipeline.py');
+    h.changed();
     await vi.advanceTimersByTimeAsync(300);
     expect(h.subscription.dispose).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledTimes(1);

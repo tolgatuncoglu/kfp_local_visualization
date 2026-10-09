@@ -34,4 +34,24 @@ describe('real KFP compiler', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it.skipIf(!available)('compiles the stress pipeline (If/Else, ParallelFor, ExitHandler, nested)', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'kfp-real-test-'));
+    try {
+      const output = join(directory, 'stress.yaml');
+      execFileSync(kfp, [
+        'dsl', 'compile',
+        '--py', resolve('test/fixtures/stress_pipeline.py'),
+        '--output', output,
+        '--function', 'stress',
+      ], { encoding: 'utf8' });
+      const graph = parsePipelineSpec(readFileSync(output, 'utf8'));
+      expect(graph.root.tasks.map((task) => task.key)).toEqual(['cleanup', 'exit-handler-1']);
+      const handler = graph.root.tasks.find((task) => task.key === 'exit-handler-1')?.childScope;
+      expect(handler?.tasks.map((task) => task.key)).toEqual(['agg', 'condition-branches-2', 'flag', 'for-loop-5', 'gen']);
+      expect(handler?.tasks.find((task) => task.key === 'for-loop-5')?.iterator).toBe('parameter');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

@@ -22,4 +22,46 @@ describe('discoverPipelineNames', () => {
     const source = '# @dsl.pipeline\ndef ignored(): pass\n@dsl.component\ndef worker(): pass\n';
     expect(discoverPipelineNames(source)).toEqual([]);
   });
+
+  it('handles multi-line decorators with arguments', () => {
+    const source = [
+      'from kfp import dsl',
+      '@dsl.pipeline(',
+      '    name="x",',
+      '    description="def fake(): pass",',
+      ')',
+      'def real(): pass',
+    ].join('\n');
+    expect(discoverPipelineNames(source)).toEqual(['real']);
+  });
+
+  it('handles fully qualified kfp.dsl.pipeline and import kfp as alias', () => {
+    const source = [
+      'import kfp',
+      'import kfp as k',
+      '@kfp.dsl.pipeline(name="a")',
+      'def a(): pass',
+      '@k.dsl.pipeline',
+      'def b(): pass',
+    ].join('\n');
+    expect(discoverPipelineNames(source)).toEqual(['a', 'b']);
+  });
+
+  it('allows comments, blank lines and other decorators between decorator and def', () => {
+    const source = [
+      'from kfp import dsl',
+      '@dsl.pipeline(name="a")',
+      '',
+      '# explain',
+      '@other',
+      '',
+      'async def a(): pass',
+    ].join('\n');
+    expect(discoverPipelineNames(source)).toEqual(['a']);
+  });
+
+  it('does not leak a pipeline decorator onto a later class or function', () => {
+    const source = '@dsl.pipeline\nclass Foo:\n    pass\ndef later(): pass\n';
+    expect(discoverPipelineNames(source)).toEqual([]);
+  });
 });

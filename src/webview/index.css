@@ -4,6 +4,7 @@ button:hover { background: var(--vscode-button-secondaryHoverBackground, var(--v
 button:focus-visible, select:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .toolbar { display: flex; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--vscode-panel-border); }
 #status, #warning { padding: 6px 10px; overflow-wrap: anywhere; }
+#status { max-height: 3.2em; overflow: hidden; }
 #warning { background: var(--vscode-inputValidation-warningBackground); }
 main { display: flex; height: calc(100vh - 92px); min-height: 300px; }
 #canvas { flex: 1; overflow: auto; padding: 12px; }

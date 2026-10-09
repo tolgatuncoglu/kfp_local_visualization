@@ -12,7 +12,7 @@ export type PreviewOptions = {
   sourceUri: string;
   load(signal: AbortSignal): Promise<PipelineGraph>;
   panel: PreviewPanel;
-  subscribeSave(listener: (uri: string) => void): { dispose(): void };
+  subscribeChanges(listener: () => void): { dispose(): void };
   debounceMs?: number;
   reportError?(error: Error): void;
 };
@@ -20,7 +20,7 @@ export type PreviewOptions = {
 export class PreviewController {
   private generation = 0;
   private active?: AbortController;
-  private saveSubscription?: { dispose(): void };
+  private changeSubscription?: { dispose(): void };
   private timer?: ReturnType<typeof setTimeout>;
   private disposed = false;
   private lastGraph?: PipelineGraph;
@@ -32,14 +32,14 @@ export class PreviewController {
   constructor(private readonly options: PreviewOptions) {}
 
   start(): Promise<void> {
-    if (!this.saveSubscription) {
-      this.saveSubscription = this.options.subscribeSave((uri) => this.onSave(uri));
+    if (!this.changeSubscription) {
+      this.changeSubscription = this.options.subscribeChanges(() => this.onChange());
     }
     return this.refresh();
   }
 
-  private onSave(uri: string): void {
-    if (this.disposed || uri !== this.options.sourceUri) return;
+  private onChange(): void {
+    if (this.disposed) return;
     this.generation++;
     this.active?.abort();
     if (this.timer) clearTimeout(this.timer);
@@ -108,6 +108,6 @@ export class PreviewController {
     this.generation++;
     this.active?.abort();
     if (this.timer) clearTimeout(this.timer);
-    this.saveSubscription?.dispose();
+    this.changeSubscription?.dispose();
   }
 }

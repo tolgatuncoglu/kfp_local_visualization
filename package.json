@@ -2,28 +2,47 @@
   "name": "kfp-dag-preview",
   "displayName": "KFP DAG Preview",
   "description": "Read-only local DAG preview for Kubeflow Pipelines",
-  "version": "0.1.1",
+  "version": "0.2.0",
+  "license": "MIT",
+  "author": "Tolga Tuncoglu",
   "publisher": "tolgatuncoglu",
   "repository": {
     "type": "git",
     "url": "https://github.com/tolgatuncoglu/kfp_local_visualization.git"
   },
+  "homepage": "https://github.com/tolgatuncoglu/kfp_local_visualization#readme",
+  "bugs": {
+    "url": "https://github.com/tolgatuncoglu/kfp_local_visualization/issues"
+  },
+  "categories": [
+    "Visualization",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "kubeflow",
+    "kubeflow pipelines",
+    "kfp",
+    "dag",
+    "mermaid",
+    "mlops",
+    "pipeline"
+  ],
   "private": true,
   "engines": {
     "vscode": "^1.96.0"
   },
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onCommand:kfpDagPreview.previewPython",
-    "onCommand:kfpDagPreview.previewYaml"
-  ],
   "extensionKind": [
     "workspace"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
-      "supported": false,
-      "description": "Compiling a pipeline imports and executes local Python code."
+      "supported": "limited",
+      "description": "Previewing compiled YAML works in Restricted Mode. Previewing a Python pipeline imports and executes local Python code, so it requires a trusted workspace.",
+      "restrictedConfigurations": [
+        "kfpDagPreview.kfpExecutable"
+      ]
     }
   },
   "contributes": {
@@ -52,17 +71,19 @@
         "kfpDagPreview.kfpExecutable": {
           "type": "string",
           "default": "",
+          "scope": "machine-overridable",
           "description": "Path to the KFP CLI when the VS Code Python extension has no selected environment."
         }
       }
     }
   },
   "scripts": {
+    "vscode:prepublish": "node esbuild.mjs --production",
     "test": "vitest run",
     "test:integration": "npm run build && node test/integration/runner.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node esbuild.mjs",
-    "package": "npm run build && vsce package --no-dependencies --out kfp-dag-preview.vsix"
+    "package": "vsce package --no-dependencies --out kfp-dag-preview.vsix"
   },
   "dependencies": {
     "mermaid": "^12.1.0",
@@ -71,7 +92,6 @@
   "devDependencies": {
     "@types/node": "^26.6.4",
     "@types/vscode": "1.96.0",
-    "@vscode/python-extension": "^1.0.6",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",

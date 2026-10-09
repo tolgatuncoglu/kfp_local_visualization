@@ -1,3 +1,5 @@
+> **Historical design document.** The implementation has since diverged (source layout is `src/host/` not `src/extension/`; refresh also watches files on disk; trust is `"limited"`; edges attach to the inner task node). `README.md` and `CLAUDE.md` describe current behavior.
+
 # KFP DAG Preview for VS Code — design
 
 Date: 2026-10-08

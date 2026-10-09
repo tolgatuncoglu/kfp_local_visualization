@@ -48,6 +48,8 @@ export class PipelineSpecError extends Error {
   }
 }
 
+export const MAX_SCOPE_DEPTH = 64;
+
 type RecordValue = Record<string, unknown>;
 
 const record = (value: unknown): RecordValue | undefined =>
@@ -93,7 +95,11 @@ function parseScope(
   label: string,
   components: RecordValue,
   componentStack: ReadonlySet<string>,
+  depth = 0,
 ): GraphScope {
+  if (depth > MAX_SCOPE_DEPTH) {
+    throw new PipelineSpecError(`Pipeline nesting exceeds ${MAX_SCOPE_DEPTH} levels at ${id}`);
+  }
   const rawTasks = record(dag.tasks);
   if (!rawTasks) throw new PipelineSpecError(`DAG ${id} has no task map`);
 
@@ -133,6 +139,7 @@ function parseScope(
         graphTask.label,
         components,
         new Set([...componentStack, componentName]),
+        depth + 1,
       );
     }
     return graphTask;
@@ -148,13 +155,16 @@ function parseScope(
     }
     if (label && !edge.labels.includes(label)) edge.labels.push(label);
   };
+  // Edges whose upstream is not a task in this scope are dropped: Mermaid would
+  // otherwise invent ghost nodes. The info stays in task.dependencies / inputs.
+  const known = new Set(tasks.map((task) => task.key));
   for (const graphTask of tasks) {
     const source = record(rawTasks[graphTask.key]) ?? {};
     for (const upstream of Array.isArray(source.dependentTasks) ? source.dependentTasks : []) {
-      if (typeof upstream === 'string') addEdge(`${id}/${upstream}`, graphTask.id, 'order');
+      if (typeof upstream === 'string' && known.has(upstream)) addEdge(`${id}/${upstream}`, graphTask.id, 'order');
     }
     for (const input of graphTask.inputs) {
-      if (input.sourceTask) {
+      if (input.sourceTask && known.has(input.sourceTask)) {
         addEdge(
           `${id}/${input.sourceTask}`,
           graphTask.id,

@@ -1,8 +1,8 @@
 import mermaid from 'mermaid';
 import type { GraphTask, PipelineGraph } from '../core/graph';
 import { mermaidNodeId } from '../core/mermaid';
-import { PreviewStatus } from './previewStatus';
-import { reconcileTaskDetails, tasksIn } from './taskSelection';
+import { PreviewStatus, summarizeError } from './previewStatus';
+import { indexNodesByMermaidId, reconcileTaskDetails, tasksIn } from './taskSelection';
 import { readMermaidTheme, watchVsCodeTheme } from './theme';
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
@@ -78,10 +78,9 @@ async function render(): Promise<void> {
     const { svg } = await mermaid.render(`kfp-dag-${generation}`, currentSource);
     if (generation !== renderGeneration) return;
     diagram.innerHTML = svg;
+    const nodes = indexNodesByMermaidId(diagram.querySelectorAll<SVGGElement>('g.node'));
     for (const task of currentGraph ? tasksIn(currentGraph.root) : []) {
-      const id = mermaidNodeId(task.id);
-      const element = [...diagram.querySelectorAll<SVGGElement>('g.node')]
-        .find((node) => node.id.includes(id));
+      const element = nodes.get(mermaidNodeId(task.id));
       if (element) {
         element.style.cursor = 'pointer';
         element.addEventListener('click', () => detail(task));
@@ -89,8 +88,11 @@ async function render(): Promise<void> {
     }
     status.textContent = previewStatus.rendered(currentGraph?.nodeCount ?? 0, currentGraph?.edgeCount ?? 0);
   } catch (error) {
+    // Mermaid leaves its error SVG (and a temp container) in document.body when render() throws.
+    document.getElementById(`kfp-dag-${generation}`)?.remove();
+    document.getElementById(`dkfp-dag-${generation}`)?.remove();
     if (generation !== renderGeneration) return;
-    status.textContent = `Diagram rendering failed: ${error instanceof Error ? error.message : String(error)}`;
+    status.textContent = `Diagram rendering failed: ${summarizeError(error instanceof Error ? error.message : String(error))}`;
   }
 }
 

@@ -10,3 +10,7 @@ tsconfig.json
 vitest.config.mts
 package-lock.json
 *.vsix
+.github/**
+CLAUDE.md
+.vscode-test/**
+.claude/**

@@ -1,0 +1,593 @@
+# Real KFP output (kfp 2.17.0) for test/fixtures/stress_pipeline.py.
+# Regenerate: kfp dsl compile --py test/fixtures/stress_pipeline.py --output test/fixtures/real-stress.yaml --function stress
+# PIPELINE DEFINITION
+# Name: stress
+# Inputs:
+#    p: str [Default: 'v']
+components:
+  comp-agg:
+    executorLabel: exec-agg
+    inputDefinitions:
+      parameters:
+        xs:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-cleanup:
+    executorLabel: exec-cleanup
+  comp-condition-3:
+    dag:
+      tasks:
+        work:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-work
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: work
+    inputDefinitions:
+      parameters:
+        pipelinechannel--flag-Output:
+          parameterType: STRING
+        pipelinechannel--p:
+          parameterType: STRING
+  comp-condition-4:
+    dag:
+      tasks:
+        work-2:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-work-2
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: work-2
+    inputDefinitions:
+      parameters:
+        pipelinechannel--flag-Output:
+          parameterType: STRING
+        pipelinechannel--p:
+          parameterType: STRING
+  comp-condition-branches-2:
+    dag:
+      tasks:
+        condition-3:
+          componentRef:
+            name: comp-condition-3
+          inputs:
+            parameters:
+              pipelinechannel--flag-Output:
+                componentInputParameter: pipelinechannel--flag-Output
+              pipelinechannel--p:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: condition-3
+          triggerPolicy:
+            condition: inputs.parameter_values['pipelinechannel--flag-Output'] ==
+              'x'
+        condition-4:
+          componentRef:
+            name: comp-condition-4
+          inputs:
+            parameters:
+              pipelinechannel--flag-Output:
+                componentInputParameter: pipelinechannel--flag-Output
+              pipelinechannel--p:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: condition-4
+          triggerPolicy:
+            condition: '!(inputs.parameter_values[''pipelinechannel--flag-Output'']
+              == ''x'')'
+    inputDefinitions:
+      parameters:
+        pipelinechannel--flag-Output:
+          parameterType: STRING
+        pipelinechannel--p:
+          parameterType: STRING
+  comp-exit-handler-1:
+    dag:
+      tasks:
+        agg:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-agg
+          dependentTasks:
+          - for-loop-5
+          inputs:
+            parameters:
+              xs:
+                taskOutputParameter:
+                  outputParameterKey: pipelinechannel--work-3-Output
+                  producerTask: for-loop-5
+          taskInfo:
+            name: agg
+        condition-branches-2:
+          componentRef:
+            name: comp-condition-branches-2
+          dependentTasks:
+          - flag
+          inputs:
+            parameters:
+              pipelinechannel--flag-Output:
+                taskOutputParameter:
+                  outputParameterKey: Output
+                  producerTask: flag
+              pipelinechannel--p:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: condition-branches-2
+        flag:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-flag
+          taskInfo:
+            name: flag
+        for-loop-5:
+          componentRef:
+            name: comp-for-loop-5
+          dependentTasks:
+          - gen
+          inputs:
+            parameters:
+              pipelinechannel--gen-Output:
+                taskOutputParameter:
+                  outputParameterKey: Output
+                  producerTask: gen
+              pipelinechannel--p:
+                componentInputParameter: pipelinechannel--p
+          parameterIterator:
+            itemInput: pipelinechannel--gen-Output-loop-item
+            items:
+              inputParameter: pipelinechannel--gen-Output
+          taskInfo:
+            name: for-loop-5
+        gen:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-gen
+          taskInfo:
+            name: gen
+    inputDefinitions:
+      parameters:
+        pipelinechannel--p:
+          parameterType: STRING
+  comp-flag:
+    executorLabel: exec-flag
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-for-loop-5:
+    dag:
+      outputs:
+        parameters:
+          pipelinechannel--work-3-Output:
+            valueFromParameter:
+              outputParameterKey: Output
+              producerSubtask: work-3
+      tasks:
+        inner:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-inner
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: pipelinechannel--gen-Output-loop-item
+              y:
+                componentInputParameter: pipelinechannel--p
+          taskInfo:
+            name: inner
+        work-3:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-work-3-2
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: pipelinechannel--gen-Output-loop-item
+          taskInfo:
+            name: work-3
+    inputDefinitions:
+      parameters:
+        pipelinechannel--gen-Output:
+          parameterType: LIST
+        pipelinechannel--gen-Output-loop-item:
+          parameterType: STRING
+        pipelinechannel--p:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        pipelinechannel--work-3-Output:
+          parameterType: LIST
+  comp-gen:
+    executorLabel: exec-gen
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: LIST
+  comp-inner:
+    dag:
+      tasks:
+        work:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-work-3
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: x
+          taskInfo:
+            name: work
+        work-2:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-work-2-2
+          dependentTasks:
+          - work
+          inputs:
+            parameters:
+              x:
+                componentInputParameter: y
+          taskInfo:
+            name: work-2
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+        y:
+          parameterType: STRING
+  comp-work:
+    executorLabel: exec-work
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-work-2:
+    executorLabel: exec-work-2
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-work-2-2:
+    executorLabel: exec-work-2-2
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-work-3:
+    executorLabel: exec-work-3
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-work-3-2:
+    executorLabel: exec-work-3-2
+    inputDefinitions:
+      parameters:
+        x:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-agg:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - agg
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef agg(xs: List[str]) -> str:\n    return ''\n\n"
+        image: python:3.11
+    exec-cleanup:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - cleanup
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef cleanup():\n    pass\n\n"
+        image: python:3.11
+    exec-flag:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - flag
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef flag() -> str:\n    return 'x'\n\n"
+        image: python:3.11
+    exec-gen:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - gen
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef gen() -> List[str]:\n    return ['a']\n\n"
+        image: python:3.11
+    exec-work:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - work
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef work(x: str) -> str:\n    return x\n\n"
+        image: python:3.11
+    exec-work-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - work
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef work(x: str) -> str:\n    return x\n\n"
+        image: python:3.11
+    exec-work-2-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - work
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef work(x: str) -> str:\n    return x\n\n"
+        image: python:3.11
+    exec-work-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - work
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef work(x: str) -> str:\n    return x\n\n"
+        image: python:3.11
+    exec-work-3-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - work
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef work(x: str) -> str:\n    return x\n\n"
+        image: python:3.11
+pipelineInfo:
+  name: stress
+root:
+  dag:
+    tasks:
+      cleanup:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-cleanup
+        dependentTasks:
+        - exit-handler-1
+        taskInfo:
+          name: cleanup
+        triggerPolicy:
+          strategy: ALL_UPSTREAM_TASKS_COMPLETED
+      exit-handler-1:
+        componentRef:
+          name: comp-exit-handler-1
+        inputs:
+          parameters:
+            pipelinechannel--p:
+              componentInputParameter: p
+        taskInfo:
+          name: exit-handler-1
+  inputDefinitions:
+    parameters:
+      p:
+        defaultValue: v
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.17.0

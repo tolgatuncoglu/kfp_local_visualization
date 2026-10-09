@@ -10,12 +10,18 @@ const state = vi.hoisted(() => ({
   panelCallbacks: undefined as any,
   panelDisposals: 0,
   saveDisposals: 0,
+  created: 0,
+  reveals: 0,
+  watchers: [] as any[],
+  saveListener: undefined as undefined | ((d: any) => void),
 }));
 
 vi.mock('../../src/host/panel', () => ({
   createDagPanel: (_uri: unknown, callbacks: any) => {
     state.panelCallbacks = callbacks;
+    state.created++;
     state.panel = {
+      reveal() { state.reveals++; },
       whenReady: async () => {},
       showLoading() {}, showGraph() {}, showError() {}, showSizeWarning() {},
       dispose() { state.panelDisposals++; state.panelCallbacks.disposed(); },
@@ -40,9 +46,18 @@ vi.mock('vscode', () => ({
   },
   workspace: {
     get isTrusted() { return state.trusted; },
-    onDidSaveTextDocument: () => ({ dispose() { state.saveDisposals++; } }),
+    onDidSaveTextDocument: (listener: (d: any) => void) => { state.saveListener = listener; return { dispose() { state.saveDisposals++; } }; },
+    getWorkspaceFolder: () => ({ uri: { path: '/work', toString: () => 'file:///work' } }),
+    createFileSystemWatcher: (pattern: any) => {
+      const w: any = { pattern, handlers: {} as any, dispose() {} };
+      for (const n of ['Change', 'Create', 'Delete']) w[`onDid${n}`] = (h: any) => { w.handlers[n] = h; return { dispose() {} }; };
+      state.watchers.push(w);
+      return w;
+    },
     openTextDocument: async () => ({ getText: () => 'root:\n  dag:\n    tasks:\n      hello: {taskInfo: {name: Hello}}\n' }),
   },
+  Uri: { joinPath: (base: any, ...parts: string[]) => ({ path: '/work' + parts.join('/').replace(/^\.\./, ''), toString: () => 'file:///work' }) },
+  RelativePattern: class { constructor(public base: any, public pattern: string) {} },
   env: { clipboard: { writeText: async () => {} } },
 }));
 
@@ -55,7 +70,13 @@ beforeEach(() => {
   state.choices = [];
   state.panelDisposals = 0;
   state.saveDisposals = 0;
+  state.created = 0;
+  state.reveals = 0;
+  state.watchers.length = 0;
 });
+
+const yamlUri = { scheme: 'file', fsPath: '/work/pipeline.yaml', path: '/work/pipeline.yaml', toString: () => 'file:///work/pipeline.yaml' };
+const pyUri = { scheme: 'file', fsPath: '/work/pipeline.py', path: '/work/pipeline.py', toString: () => 'file:///work/pipeline.py' };
 
 describe('extension activation', () => {
   it('registers Python and compiled YAML preview commands', () => {
@@ -74,7 +95,7 @@ describe('extension activation', () => {
   });
 
   it('offers manual function entry even when one pipeline name is detected', async () => {
-    const chosen = await selectPipeline('from kfp import dsl\n@dsl.pipeline\ndef known(): pass\n@kfp.dsl.pipeline\ndef other(): pass\n');
+    const chosen = await selectPipeline('from kfp import dsl\n@dsl.pipeline\ndef known(): pass\n@my_wrapper.pipeline\ndef other(): pass\n');
     expect(state.choices).toEqual(['known', 'Enter function name…']);
     expect(chosen).toBe('manual_pipeline');
   });
@@ -82,10 +103,57 @@ describe('extension activation', () => {
   it('disposes open preview panels and save listeners when the extension deactivates', async () => {
     const context = { subscriptions: [] as { dispose(): void }[] };
     activate(context as any);
-    await state.handlers.get('kfpDagPreview.previewYaml')!({ scheme: 'file', fsPath: '/work/pipeline.yaml', toString: () => 'file:///work/pipeline.yaml' });
+    await state.handlers.get('kfpDagPreview.previewYaml')!(yamlUri);
     expect(state.saveDisposals).toBe(0);
     context.subscriptions.forEach((subscription) => subscription.dispose());
     expect(state.panelDisposals).toBe(1);
     expect(state.saveDisposals).toBe(1);
+  });
+
+  it('does not trust-gate the YAML preview', async () => {
+    state.trusted = false;
+    activate({ subscriptions: [] } as any);
+    await state.handlers.get('kfpDagPreview.previewYaml')!(yamlUri);
+    expect(state.errors).toEqual([]);
+    expect(state.created).toBe(1);
+  });
+
+  it('reveals the existing panel instead of opening a duplicate, and forgets disposed panels', async () => {
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    activate(context as any);
+    const run = state.handlers.get('kfpDagPreview.previewYaml')!;
+    await run(yamlUri);
+    await run(yamlUri);
+    expect(state.created).toBe(1);
+    expect(state.reveals).toBe(1);
+    const before = context.subscriptions.length;
+    state.panel.dispose();
+    expect(context.subscriptions.length).toBe(before - 1);
+    await run(yamlUri);
+    expect(state.created).toBe(2);
+  });
+
+  it('dedupes Python previews per function name', async () => {
+    activate({ subscriptions: [] } as any);
+    const run = state.handlers.get('kfpDagPreview.previewPython')!;
+    state.panel = undefined;
+    await run(pyUri, 'a');
+    await run(pyUri, 'a');
+    await run(pyUri, 'b');
+    expect(state.created).toBe(2);
+    expect(state.reveals).toBe(1);
+  });
+
+  it('watches workspace .py files for Python previews, ignoring dependency dirs, and just the file for YAML', async () => {
+    activate({ subscriptions: [] } as any);
+    await state.handlers.get('kfpDagPreview.previewPython')!(pyUri, 'a');
+    expect(state.watchers[0].pattern.pattern).toBe('**/*.py');
+    await state.handlers.get('kfpDagPreview.previewYaml')!(yamlUri);
+    expect(state.watchers[1].pattern.pattern).toBe('pipeline.yaml');
+    const { isIgnoredPath } = await import('../../src/host/changes');
+    expect(isIgnoredPath('/work/.venv/lib/x.py')).toBe(true);
+    expect(isIgnoredPath('/work/a/__pycache__/x.py')).toBe(true);
+    expect(isIgnoredPath('/work/venv_tools/x.py')).toBe(false);
+    expect(isIgnoredPath('/work/pkg/util.py')).toBe(false);
   });
 });

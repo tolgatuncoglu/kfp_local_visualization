@@ -16,6 +16,7 @@ function harness() {
     },
     onDidDispose: (listener: () => void) => { closed = listener; return { dispose() {} }; },
     dispose: vi.fn(),
+    reveal: vi.fn(),
   } as unknown as WebviewPanel;
   const callbacks = {
     refresh: vi.fn(),
@@ -29,6 +30,12 @@ function harness() {
 }
 
 describe('DagPanel', () => {
+  it('reveals the underlying panel', () => {
+    const h = harness();
+    new DagPanel(h.panel, h.callbacks).reveal();
+    expect((h.panel as any).reveal).toHaveBeenCalled();
+  });
+
   it('sends graph, loading, stale error, and large-graph warning states', () => {
     const h = harness();
     const view = new DagPanel(h.panel, h.callbacks);
