@@ -75,6 +75,8 @@ describe('PreviewController', () => {
     await h.controller.refresh();
     expect(h.panel.showError).toHaveBeenCalledWith('broken import', true);
     expect(h.controller.getMermaidSource()).toContain('Hello');
+    h.controller.collapse('root/group');
+    expect(h.panel.showGraph).toHaveBeenLastCalledWith(sample, expect.any(String), 'broken import');
   });
 
   it('stops listening and cancels refresh after disposal', async () => {

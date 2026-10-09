@@ -22,6 +22,15 @@ describe('parsePipelineSpec', () => {
       ['root/prepare', 'root/train', 'order', []],
     ]);
     expect(graph.edgeCount).toBe(2);
+    expect(graph.root.tasks.find((task) => task.key === 'train')?.dependencies).toEqual(['prepare']);
+    expect(graph.root.tasks.find((task) => task.key === 'train')?.inputs.map((input) => input.sourceDescription)).toEqual(['ingest.data', 'ingest.count']);
+  });
+
+  it('distinguishes pipeline inputs from constants in task details', () => {
+    const graph = parsePipelineSpec(`root:\n  dag:\n    tasks:\n      example:\n        inputs:\n          parameters:\n            from_parent: {componentInputParameter: source}\n            literal: {runtimeValue: {constant: 5}}\n`);
+    expect(graph.root.tasks[0].inputs.map((input) => input.sourceDescription)).toEqual([
+      'pipeline input source', 'constant',
+    ]);
   });
 
   it('creates child scopes for nested pipeline components', () => {

@@ -10,10 +10,9 @@ function activeUri(provided?: vscode.Uri): vscode.Uri | undefined {
   return provided ?? vscode.window.activeTextEditor?.document.uri;
 }
 
-async function selectPipeline(source: string): Promise<string | undefined> {
+export async function selectPipeline(source: string): Promise<string | undefined> {
   const names = discoverPipelineNames(source);
-  if (names.length === 1) return names[0];
-  if (names.length > 1) {
+  if (names.length > 0) {
     const manual = 'Enter function name…';
     const picked = await vscode.window.showQuickPick([...names, manual], {
       placeHolder: 'Select a KFP pipeline to preview',
@@ -46,6 +45,7 @@ export function activate(context: vscode.ExtensionContext): void {
       showOutput: () => output.show(true),
       disposed: () => { closed = true; controller?.dispose(); },
     });
+    context.subscriptions.push(panel);
     await panel.whenReady();
     if (closed) return;
     controller = new PreviewController({
@@ -58,7 +58,7 @@ export function activate(context: vscode.ExtensionContext): void {
     await controller.start();
   }
 
-  context.subscriptions.push(vscode.commands.registerCommand('kfpDagPreview.previewPython', async (provided?: vscode.Uri) => {
+  context.subscriptions.push(vscode.commands.registerCommand('kfpDagPreview.previewPython', async (provided?: vscode.Uri, requestedFunctionName?: string) => {
     if (!vscode.workspace.isTrusted) {
       await vscode.window.showErrorMessage('KFP DAG Preview needs a trusted workspace to compile Python pipeline code.');
       return;
@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     try {
       const document = await vscode.workspace.openTextDocument(uri);
-      const functionName = await selectPipeline(document.getText());
+      const functionName = requestedFunctionName ?? await selectPipeline(document.getText());
       if (!functionName) return;
       await openPreview(uri, async (signal) => {
         const configured = vscode.workspace.getConfiguration('kfpDagPreview', uri).get<string>('kfpExecutable');

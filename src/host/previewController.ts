@@ -3,7 +3,7 @@ import { toMermaid } from '../core/mermaid';
 
 export type PreviewPanel = {
   showLoading(): void;
-  showGraph(graph: PipelineGraph, mermaidSource: string): void;
+  showGraph(graph: PipelineGraph, mermaidSource: string, staleError?: string): void;
   showError(message: string, stale: boolean): void;
   showSizeWarning(nodeCount: number, edgeCount: number): void;
 };
@@ -24,6 +24,7 @@ export class PreviewController {
   private timer?: ReturnType<typeof setTimeout>;
   private disposed = false;
   private lastGraph?: PipelineGraph;
+  private lastError?: string;
   private mermaidSource = '';
   private readonly collapsed = new Set<string>();
   private allowLargeGraph = false;
@@ -61,11 +62,13 @@ export class PreviewController {
       const graph = await this.options.load(active.signal);
       if (this.disposed || generation !== this.generation) return;
       this.lastGraph = graph;
+      this.lastError = undefined;
       this.allowLargeGraph = false;
       this.showGraphOrWarning();
     } catch (cause) {
       if (this.disposed || generation !== this.generation) return;
       const error = cause instanceof Error ? cause : new Error(String(cause));
+      this.lastError = error.message;
       this.options.reportError?.(error);
       this.options.panel.showError(error.message, Boolean(this.lastGraph));
     } finally {
@@ -81,7 +84,7 @@ export class PreviewController {
       this.options.panel.showSizeWarning(graph.nodeCount, graph.edgeCount);
       return;
     }
-    this.options.panel.showGraph(graph, this.mermaidSource);
+    this.options.panel.showGraph(graph, this.mermaidSource, this.lastError);
   }
 
   collapse(scopeId: string): void {

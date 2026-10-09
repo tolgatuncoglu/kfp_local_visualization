@@ -44,8 +44,8 @@ export class DagPanel {
     void this.panel.webview.postMessage({ type: 'loading' });
   }
 
-  showGraph(graph: PipelineGraph, mermaidSource: string): void {
-    void this.panel.webview.postMessage({ type: 'graph', graph, mermaidSource });
+  showGraph(graph: PipelineGraph, mermaidSource: string, staleError?: string): void {
+    void this.panel.webview.postMessage({ type: 'graph', graph, mermaidSource, staleError });
   }
 
   showError(message: string, stale: boolean): void {

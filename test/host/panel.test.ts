@@ -34,11 +34,12 @@ describe('DagPanel', () => {
     const view = new DagPanel(h.panel, h.callbacks);
     const graph = parsePipelineSpec(readFileSync(join(__dirname, '..', 'fixtures', 'simple.yaml'), 'utf8'));
     view.showLoading();
-    view.showGraph(graph, 'flowchart LR\n  a["Hello"]\n');
+    view.showGraph(graph, 'flowchart LR\n  a["Hello"]\n', 'prior failure');
     view.showError('compile failed', true);
     view.showSizeWarning(501, 0);
     expect(h.sent.map((message: any) => message.type)).toEqual(['loading', 'graph', 'error', 'sizeWarning']);
     expect((h.sent[1] as any).graph.root.tasks[0].label).toBe('Hello');
+    expect((h.sent[1] as any).staleError).toBe('prior failure');
     expect((h.sent[2] as any)).toMatchObject({ message: 'compile failed', stale: true });
   });
 

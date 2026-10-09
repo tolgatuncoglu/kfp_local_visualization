@@ -5,6 +5,7 @@ export type GraphInput = {
   kind: 'parameter' | 'artifact';
   sourceTask?: string;
   sourceOutput?: string;
+  sourceDescription: string;
 };
 
 export type GraphEdge = {
@@ -20,6 +21,7 @@ export type GraphTask = {
   label: string;
   componentName: string;
   inputs: GraphInput[];
+  dependencies: string[];
   condition?: string;
   triggerStrategy?: string;
   iterator?: 'parameter' | 'artifact';
@@ -64,11 +66,21 @@ function inputsOf(task: RecordValue): GraphInput[] {
     for (const name of Object.keys(map).sort()) {
       const value = record(map[name]) ?? {};
       const selector = record(value[kind === 'artifact' ? 'taskOutputArtifact' : 'taskOutputParameter']);
+      const sourceTask = string(selector?.producerTask);
+      const sourceOutput = string(selector?.[kind === 'artifact' ? 'outputArtifactKey' : 'outputParameterKey']);
+      const pipelineInput = string(value[kind === 'artifact' ? 'componentInputArtifact' : 'componentInputParameter']);
       result.push({
         name,
         kind,
-        sourceTask: string(selector?.producerTask),
-        sourceOutput: string(selector?.[kind === 'artifact' ? 'outputArtifactKey' : 'outputParameterKey']),
+        sourceTask,
+        sourceOutput,
+        sourceDescription: sourceTask
+          ? `${sourceTask}.${sourceOutput ?? '?'}`
+          : pipelineInput
+            ? `pipeline input ${pipelineInput}`
+            : value.runtimeValue !== undefined
+              ? 'constant'
+              : 'other input',
       });
     }
   }
@@ -102,6 +114,9 @@ function parseScope(
       label: string(record(task.taskInfo)?.name) ?? key,
       componentName,
       inputs: inputsOf(task),
+      dependencies: Array.isArray(task.dependentTasks)
+        ? task.dependentTasks.filter((name): name is string => typeof name === 'string').sort()
+        : [],
     };
     const condition = string(trigger?.condition);
     const strategy = string(trigger?.strategy);

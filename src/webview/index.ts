@@ -1,6 +1,7 @@
 import mermaid from 'mermaid';
 import type { GraphScope, GraphTask, PipelineGraph } from '../core/graph';
 import { mermaidNodeId } from '../core/mermaid';
+import { PreviewStatus } from './previewStatus';
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
 const vscode = acquireVsCodeApi();
@@ -15,6 +16,7 @@ let currentGraph: PipelineGraph | undefined;
 let currentSource = '';
 let renderGeneration = 0;
 let scale = 1;
+const previewStatus = new PreviewStatus();
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false } });
 
@@ -33,7 +35,8 @@ function detail(task: GraphTask): void {
     ['Condition', task.condition || '—'],
     ['Trigger', task.triggerStrategy || '—'],
     ['Loop', task.iterator || '—'],
-    ['Inputs', task.inputs.map((input) => `${input.name}: ${input.sourceTask ? `${input.sourceTask}.${input.sourceOutput ?? '?'}` : 'pipeline value'}`).join(', ') || '—'],
+    ['Inputs', task.inputs.map((input) => `${input.name}: ${input.sourceDescription}`).join(', ') || '—'],
+    ['Dependencies', task.dependencies.join(', ') || '—'],
   ];
   for (const [label, value] of items) {
     const row = document.createElement('p');
@@ -54,7 +57,9 @@ function renderTaskList(graph: PipelineGraph): void {
   const selected = taskList.value;
   taskList.replaceChildren(new Option('Select a task', ''));
   for (const task of tasksIn(graph.root)) taskList.add(new Option(task.label, task.id));
-  if (selected && tasksIn(graph.root).some((task) => task.id === selected)) taskList.value = selected;
+  const selectedTask = selected ? tasksIn(graph.root).find((task) => task.id === selected) : undefined;
+  if (selectedTask) detail(selectedTask);
+  else taskDetail.replaceChildren();
 }
 
 async function render(): Promise<void> {
@@ -72,7 +77,7 @@ async function render(): Promise<void> {
         element.addEventListener('click', () => detail(task));
       }
     }
-    status.textContent = `${currentGraph?.nodeCount ?? 0} tasks · ${currentGraph?.edgeCount ?? 0} links`;
+    status.textContent = previewStatus.rendered(currentGraph?.nodeCount ?? 0, currentGraph?.edgeCount ?? 0);
   } catch (error) {
     if (generation !== renderGeneration) return;
     status.textContent = `Diagram rendering failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -110,25 +115,26 @@ window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as Record<string, unknown>;
   switch (message.type) {
     case 'loading':
-      status.textContent = 'Compiling pipeline…';
+      status.textContent = previewStatus.loading();
       break;
     case 'graph':
       currentGraph = message.graph as PipelineGraph;
       currentSource = message.mermaidSource as string;
+      status.textContent = previewStatus.graph(typeof message.staleError === 'string' ? message.staleError : undefined) ?? 'Rendering diagram…';
       warning.hidden = true;
-      byId<HTMLButtonElement>('show-output').hidden = true;
+      byId<HTMLButtonElement>('show-output').hidden = typeof message.staleError !== 'string';
       renderTaskList(currentGraph);
       void render();
       break;
     case 'error':
-      status.textContent = `${message.stale ? 'Out of date — ' : ''}${message.message}`;
+      status.textContent = previewStatus.error(String(message.message), Boolean(message.stale));
       byId<HTMLButtonElement>('show-output').hidden = false;
       if (!message.stale) diagram.replaceChildren();
       break;
     case 'sizeWarning':
       warning.hidden = false;
       byId<HTMLSpanElement>('warning-text').textContent = `Large graph: ${message.nodeCount} tasks, ${message.edgeCount} links. `;
-      status.textContent = 'Render paused';
+      status.textContent = previewStatus.sizeWarning();
       break;
   }
 });

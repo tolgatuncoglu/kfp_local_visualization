@@ -45,7 +45,7 @@ fs.writeFileSync(output, 'pipelineInfo: {name: demo}\\nroot:\\n  dag:\\n    task
   const uri = vscode.Uri.file(pipelinePath);
   const document = await vscode.workspace.openTextDocument(uri);
   await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
-  await vscode.commands.executeCommand('kfpDagPreview.previewPython', uri);
+  await vscode.commands.executeCommand('kfpDagPreview.previewPython', uri, 'demo');
   await until(async () => { try { return Number(await readFile(countPath, 'utf8')) >= 1; } catch { return false; } });
   const hasSidePanel = vscode.window.tabGroups.all.some((group) =>
     group.tabs.some((tab) => tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith('kfpDagPreview')),
