@@ -1,0 +1,36 @@
+pipelineInfo:
+  name: data-pipeline
+root:
+  dag:
+    tasks:
+      ingest:
+        taskInfo:
+          name: Ingest
+        componentRef:
+          name: comp-ingest
+      prepare:
+        taskInfo:
+          name: Prepare
+        componentRef:
+          name: comp-prepare
+      train:
+        taskInfo:
+          name: Train
+        componentRef:
+          name: comp-train
+        dependentTasks: [prepare]
+        inputs:
+          parameters:
+            rows:
+              taskOutputParameter:
+                producerTask: ingest
+                outputParameterKey: count
+          artifacts:
+            dataset:
+              taskOutputArtifact:
+                producerTask: ingest
+                outputArtifactKey: data
+components:
+  comp-ingest: {executorLabel: exec-ingest}
+  comp-prepare: {executorLabel: exec-prepare}
+  comp-train: {executorLabel: exec-train}

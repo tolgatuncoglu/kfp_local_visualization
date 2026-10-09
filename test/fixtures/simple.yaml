@@ -1,0 +1,13 @@
+pipelineInfo:
+  name: simple-pipeline
+root:
+  dag:
+    tasks:
+      hello:
+        taskInfo:
+          name: Hello
+        componentRef:
+          name: comp-hello
+components:
+  comp-hello:
+    executorLabel: exec-hello

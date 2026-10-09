@@ -1,0 +1,12 @@
+pipelineInfo: {name: conditional-pipeline}
+root:
+  dag:
+    tasks:
+      choose:
+        taskInfo: {name: Choose}
+        componentRef: {name: comp-choose}
+        triggerPolicy:
+          condition: "inputs.parameters['go'] == true"
+          strategy: ALL_UPSTREAM_TASKS_COMPLETED
+components:
+  comp-choose: {executorLabel: exec-choose}

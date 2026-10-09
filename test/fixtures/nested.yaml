@@ -1,0 +1,21 @@
+pipelineInfo:
+  name: nested-pipeline
+root:
+  dag:
+    tasks:
+      group:
+        taskInfo: {name: Group}
+        componentRef: {name: comp-group}
+      final:
+        taskInfo: {name: Final}
+        componentRef: {name: comp-final}
+        dependentTasks: [group]
+components:
+  comp-group:
+    dag:
+      tasks:
+        child:
+          taskInfo: {name: Child}
+          componentRef: {name: comp-child}
+  comp-child: {executorLabel: exec-child}
+  comp-final: {executorLabel: exec-final}

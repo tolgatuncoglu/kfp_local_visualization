@@ -1,0 +1,32 @@
+{
+  "name": "kfp-dag-preview",
+  "displayName": "KFP DAG Preview",
+  "description": "Read-only local DAG preview for Kubeflow Pipelines",
+  "version": "0.1.0",
+  "publisher": "tolgatuncoglu",
+  "private": true,
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "main": "./dist/extension.js",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "node esbuild.mjs",
+    "package": "npm run build && vsce package --no-dependencies --out kfp-dag-preview.vsix"
+  },
+  "dependencies": {
+    "mermaid": "^12.1.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/vscode": "^1.140.0",
+    "@vscode/python-extension": "^1.0.6",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

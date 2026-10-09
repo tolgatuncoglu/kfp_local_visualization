@@ -1,0 +1,12 @@
+pipelineInfo: {name: loop-pipeline}
+root:
+  dag:
+    tasks:
+      repeat:
+        taskInfo: {name: Repeat}
+        componentRef: {name: comp-repeat}
+        parameterIterator:
+          items: {raw: '[1, 2]'}
+          itemInput: item
+components:
+  comp-repeat: {executorLabel: exec-repeat}
