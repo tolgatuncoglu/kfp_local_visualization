@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parsePipelineSpec } from '../../src/core/graph';
 import { toMermaid } from '../../src/core/mermaid';
 
@@ -35,5 +35,14 @@ describe('toMermaid', () => {
     expect(source).toBe(toMermaid(pipeline));
     expect(source).toContain('Say #quot;#91;hi#93;#quot; #lt;script#gt;#96; 🌻');
     expect(source).not.toContain('<script>');
+  });
+
+  it('generates IDs without Node globals so the bundled webview can use them', () => {
+    vi.stubGlobal('Buffer', undefined);
+    try {
+      expect(() => toMermaid(graph('nested.yaml'))).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

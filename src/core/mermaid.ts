@@ -1,7 +1,9 @@
 import type { GraphScope, GraphTask, PipelineGraph } from './graph';
 
-export const mermaidNodeId = (taskId: string): string =>
-  `n${Buffer.from(taskId, 'utf8').toString('hex')}`;
+const hexId = (value: string): string =>
+  Array.from(new TextEncoder().encode(value), (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+export const mermaidNodeId = (taskId: string): string => `n${hexId(taskId)}`;
 
 function escapeLabel(value: string): string {
   const codes: Record<string, string> = {
@@ -31,7 +33,7 @@ function emitScope(scope: GraphScope, lines: string[], indent: string, collapsed
   for (const task of scope.tasks) {
     const isCollapsed = task.childScope !== undefined && collapsed.has(task.childScope.id);
     if (task.childScope && !isCollapsed) {
-      lines.push(`${indent}subgraph s${Buffer.from(task.id, 'utf8').toString('hex')}["${escapeLabel(task.label)}"]`);
+      lines.push(`${indent}subgraph s${hexId(task.id)}["${escapeLabel(task.label)}"]`);
       lines.push(`${indent}  ${mermaidNodeId(task.id)}["${displayLabel(task, false)}"]`);
       emitScope(task.childScope, lines, `${indent}  `, collapsed);
       lines.push(`${indent}end`);

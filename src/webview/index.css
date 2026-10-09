@@ -1,0 +1,15 @@
+body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font: var(--vscode-font-size) var(--vscode-font-family); }
+button, select { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border: 0; border-radius: 3px; padding: 5px 8px; cursor: pointer; }
+button:hover { background: var(--vscode-button-hoverBackground); }
+.toolbar { display: flex; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--vscode-panel-border); }
+#status, #warning { padding: 6px 10px; overflow-wrap: anywhere; }
+#warning { background: var(--vscode-inputValidation-warningBackground); }
+main { display: flex; height: calc(100vh - 92px); min-height: 300px; }
+#canvas { flex: 1; overflow: auto; padding: 12px; }
+#diagram { transform-origin: top left; width: max-content; min-width: 100%; }
+#diagram svg { max-width: none; }
+#details { width: 230px; overflow: auto; padding: 12px; border-left: 1px solid var(--vscode-panel-border); }
+#details h2 { margin-top: 0; font-size: 1.1em; }
+#task-list { width: 100%; background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+#task-detail p { overflow-wrap: anywhere; }
+@media (max-width: 700px) { main { flex-direction: column; } #details { width: auto; max-height: 35%; border-left: 0; border-top: 1px solid var(--vscode-panel-border); } }

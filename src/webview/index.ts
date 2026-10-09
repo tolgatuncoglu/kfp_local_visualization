@@ -1,0 +1,131 @@
+import mermaid from 'mermaid';
+import type { GraphScope, GraphTask, PipelineGraph } from '../core/graph';
+import { mermaidNodeId } from '../core/mermaid';
+
+declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
+const vscode = acquireVsCodeApi();
+const byId = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+const status = byId<HTMLDivElement>('status');
+const diagram = byId<HTMLDivElement>('diagram');
+const canvas = byId<HTMLElement>('canvas');
+const warning = byId<HTMLDivElement>('warning');
+const taskList = byId<HTMLSelectElement>('task-list');
+const taskDetail = byId<HTMLDivElement>('task-detail');
+let currentGraph: PipelineGraph | undefined;
+let currentSource = '';
+let renderGeneration = 0;
+let scale = 1;
+
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false } });
+
+function tasksIn(scope: GraphScope): GraphTask[] {
+  return scope.tasks.flatMap((task) => [task, ...(task.childScope ? tasksIn(task.childScope) : [])]);
+}
+
+function detail(task: GraphTask): void {
+  taskList.value = task.id;
+  taskDetail.replaceChildren();
+  const heading = document.createElement('h3');
+  heading.textContent = task.label;
+  taskDetail.append(heading);
+  const items = [
+    ['Component', task.componentName || '—'],
+    ['Condition', task.condition || '—'],
+    ['Trigger', task.triggerStrategy || '—'],
+    ['Loop', task.iterator || '—'],
+    ['Inputs', task.inputs.map((input) => `${input.name}: ${input.sourceTask ? `${input.sourceTask}.${input.sourceOutput ?? '?'}` : 'pipeline value'}`).join(', ') || '—'],
+  ];
+  for (const [label, value] of items) {
+    const row = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = `${label}: `;
+    row.append(strong, document.createTextNode(value));
+    taskDetail.append(row);
+  }
+  if (task.childScope) {
+    const button = document.createElement('button');
+    button.textContent = 'Expand or collapse group';
+    button.addEventListener('click', () => vscode.postMessage({ type: 'collapse', scopeId: task.childScope!.id }));
+    taskDetail.append(button);
+  }
+}
+
+function renderTaskList(graph: PipelineGraph): void {
+  const selected = taskList.value;
+  taskList.replaceChildren(new Option('Select a task', ''));
+  for (const task of tasksIn(graph.root)) taskList.add(new Option(task.label, task.id));
+  if (selected && tasksIn(graph.root).some((task) => task.id === selected)) taskList.value = selected;
+}
+
+async function render(): Promise<void> {
+  const generation = ++renderGeneration;
+  try {
+    const { svg } = await mermaid.render(`kfp-dag-${generation}`, currentSource);
+    if (generation !== renderGeneration) return;
+    diagram.innerHTML = svg;
+    for (const task of currentGraph ? tasksIn(currentGraph.root) : []) {
+      const id = mermaidNodeId(task.id);
+      const element = [...diagram.querySelectorAll<SVGGElement>('g.node')]
+        .find((node) => node.id.includes(id));
+      if (element) {
+        element.style.cursor = 'pointer';
+        element.addEventListener('click', () => detail(task));
+      }
+    }
+    status.textContent = `${currentGraph?.nodeCount ?? 0} tasks · ${currentGraph?.edgeCount ?? 0} links`;
+  } catch (error) {
+    if (generation !== renderGeneration) return;
+    status.textContent = `Diagram rendering failed: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+taskList.addEventListener('change', () => {
+  const task = currentGraph && tasksIn(currentGraph.root).find((candidate) => candidate.id === taskList.value);
+  if (task) detail(task);
+});
+byId<HTMLButtonElement>('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
+byId<HTMLButtonElement>('copy').addEventListener('click', () => vscode.postMessage({ type: 'copyMermaid' }));
+byId<HTMLButtonElement>('render-anyway').addEventListener('click', () => {
+  warning.hidden = true;
+  vscode.postMessage({ type: 'renderAnyway' });
+});
+byId<HTMLButtonElement>('zoom-in').addEventListener('click', () => {
+  scale = Math.min(4, scale * 1.2);
+  diagram.style.transform = `scale(${scale})`;
+});
+byId<HTMLButtonElement>('zoom-out').addEventListener('click', () => {
+  scale = Math.max(0.2, scale / 1.2);
+  diagram.style.transform = `scale(${scale})`;
+});
+byId<HTMLButtonElement>('fit').addEventListener('click', () => {
+  const svg = diagram.querySelector('svg');
+  if (!svg) return;
+  const width = svg.getBoundingClientRect().width / scale;
+  scale = Math.min(1, (canvas.clientWidth - 24) / width);
+  diagram.style.transform = `scale(${scale})`;
+});
+
+window.addEventListener('message', (event: MessageEvent) => {
+  const message = event.data as Record<string, unknown>;
+  switch (message.type) {
+    case 'loading':
+      status.textContent = 'Compiling pipeline…';
+      break;
+    case 'graph':
+      currentGraph = message.graph as PipelineGraph;
+      currentSource = message.mermaidSource as string;
+      warning.hidden = true;
+      renderTaskList(currentGraph);
+      void render();
+      break;
+    case 'error':
+      status.textContent = `${message.stale ? 'Out of date — ' : ''}${message.message}`;
+      if (!message.stale) diagram.replaceChildren();
+      break;
+    case 'sizeWarning':
+      warning.hidden = false;
+      byId<HTMLSpanElement>('warning-text').textContent = `Large graph: ${message.nodeCount} tasks, ${message.edgeCount} links. `;
+      status.textContent = 'Render paused';
+      break;
+  }
+});

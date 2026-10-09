@@ -1,0 +1,10 @@
+src/**
+test/**
+docs/**
+node_modules/**
+.superpowers/**
+esbuild.mjs
+tsconfig.json
+vitest.config.mts
+package-lock.json
+*.vsix
