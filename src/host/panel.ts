@@ -8,26 +8,36 @@ export type PanelCallbacks = {
   copyMermaid(): void;
   collapse(scopeId: string): void;
   renderAnyway(): void;
+  showOutput(): void;
   disposed(): void;
 };
 
 export class DagPanel {
+  private resolveReady!: () => void;
+  private readonly ready = new Promise<void>((resolve) => { this.resolveReady = resolve; });
+
   constructor(private readonly panel: WebviewPanel, private readonly callbacks: PanelCallbacks) {
     panel.webview.onDidReceiveMessage((message: unknown) => this.receive(message));
-    panel.onDidDispose(() => callbacks.disposed());
+    panel.onDidDispose(() => { this.resolveReady(); callbacks.disposed(); });
   }
 
   private receive(value: unknown): void {
     if (!value || typeof value !== 'object') return;
     const message = value as { type?: unknown; scopeId?: unknown };
     switch (message.type) {
+      case 'ready': this.resolveReady(); break;
       case 'refresh': this.callbacks.refresh(); break;
       case 'copyMermaid': this.callbacks.copyMermaid(); break;
       case 'collapse':
         if (typeof message.scopeId === 'string') this.callbacks.collapse(message.scopeId);
         break;
       case 'renderAnyway': this.callbacks.renderAnyway(); break;
+      case 'showOutput': this.callbacks.showOutput(); break;
     }
+  }
+
+  whenReady(): Promise<void> {
+    return this.ready;
   }
 
   showLoading(): void {
@@ -75,6 +85,7 @@ export function createDagPanel(sourceUri: Uri, callbacks: PanelCallbacks): DagPa
     <button id="fit" title="Fit diagram">Fit</button>
   </header>
   <div id="status" role="status" aria-live="polite">Waiting for compilation…</div>
+  <button id="show-output" hidden>Show compiler output</button>
   <div id="warning" hidden><span id="warning-text"></span><button id="render-anyway">Render anyway</button></div>
   <main>
     <section id="canvas" aria-label="Pipeline DAG"><div id="diagram"></div></section>

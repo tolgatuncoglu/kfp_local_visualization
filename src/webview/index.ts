@@ -85,6 +85,7 @@ taskList.addEventListener('change', () => {
 });
 byId<HTMLButtonElement>('refresh').addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
 byId<HTMLButtonElement>('copy').addEventListener('click', () => vscode.postMessage({ type: 'copyMermaid' }));
+byId<HTMLButtonElement>('show-output').addEventListener('click', () => vscode.postMessage({ type: 'showOutput' }));
 byId<HTMLButtonElement>('render-anyway').addEventListener('click', () => {
   warning.hidden = true;
   vscode.postMessage({ type: 'renderAnyway' });
@@ -115,11 +116,13 @@ window.addEventListener('message', (event: MessageEvent) => {
       currentGraph = message.graph as PipelineGraph;
       currentSource = message.mermaidSource as string;
       warning.hidden = true;
+      byId<HTMLButtonElement>('show-output').hidden = true;
       renderTaskList(currentGraph);
       void render();
       break;
     case 'error':
       status.textContent = `${message.stale ? 'Out of date — ' : ''}${message.message}`;
+      byId<HTMLButtonElement>('show-output').hidden = false;
       if (!message.stale) diagram.replaceChildren();
       break;
     case 'sizeWarning':
@@ -129,3 +132,5 @@ window.addEventListener('message', (event: MessageEvent) => {
       break;
   }
 });
+
+vscode.postMessage({ type: 'ready' });

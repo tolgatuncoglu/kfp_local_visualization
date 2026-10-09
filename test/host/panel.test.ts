@@ -22,6 +22,7 @@ function harness() {
     copyMermaid: vi.fn(),
     collapse: vi.fn(),
     renderAnyway: vi.fn(),
+    showOutput: vi.fn(),
     disposed: vi.fn(),
   };
   return { panel, sent, emit: (message: unknown) => receive(message), close: () => closed(), callbacks };
@@ -48,11 +49,13 @@ describe('DagPanel', () => {
     h.emit({ type: 'refresh' });
     h.emit({ type: 'collapse', scopeId: 'root/group' });
     h.emit({ type: 'renderAnyway' });
+    h.emit({ type: 'showOutput' });
     h.emit({ type: 'executePython' });
     expect(h.callbacks.copyMermaid).toHaveBeenCalledTimes(1);
     expect(h.callbacks.refresh).toHaveBeenCalledTimes(1);
     expect(h.callbacks.collapse).toHaveBeenCalledWith('root/group');
     expect(h.callbacks.renderAnyway).toHaveBeenCalledTimes(1);
+    expect(h.callbacks.showOutput).toHaveBeenCalledTimes(1);
   });
 
   it('reports panel closure to its owner', () => {
@@ -60,5 +63,17 @@ describe('DagPanel', () => {
     new DagPanel(h.panel, h.callbacks);
     h.close();
     expect(h.callbacks.disposed).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the webview script before starting compilation', async () => {
+    const h = harness();
+    const view = new DagPanel(h.panel, h.callbacks);
+    let ready = false;
+    void view.whenReady().then(() => { ready = true; });
+    await Promise.resolve();
+    expect(ready).toBe(false);
+    h.emit({ type: 'ready' });
+    await Promise.resolve();
+    expect(ready).toBe(true);
   });
 });

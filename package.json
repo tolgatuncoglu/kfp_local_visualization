@@ -9,8 +9,41 @@
     "vscode": "^1.96.0"
   },
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:kfpDagPreview.previewPython",
+    "onCommand:kfpDagPreview.previewYaml"
+  ],
+  "extensionKind": ["workspace"],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Compiling a pipeline imports and executes local Python code."
+    }
+  },
+  "contributes": {
+    "commands": [
+      { "command": "kfpDagPreview.previewPython", "title": "KFP: Preview DAG" },
+      { "command": "kfpDagPreview.previewYaml", "title": "KFP: Preview Compiled DAG" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "kfpDagPreview.previewPython", "when": "resourceLangId == python", "group": "navigation" }
+      ]
+    },
+    "configuration": {
+      "title": "KFP DAG Preview",
+      "properties": {
+        "kfpDagPreview.kfpExecutable": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the KFP CLI when the VS Code Python extension has no selected environment."
+        }
+      }
+    }
+  },
   "scripts": {
     "test": "vitest run",
+    "test:integration": "npm run build && node test/integration/runner.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node esbuild.mjs",
     "package": "npm run build && vsce package --no-dependencies --out kfp-dag-preview.vsix"

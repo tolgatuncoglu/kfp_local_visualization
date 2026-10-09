@@ -1,0 +1,110 @@
+import type { PipelineGraph } from '../core/graph';
+import { toMermaid } from '../core/mermaid';
+
+export type PreviewPanel = {
+  showLoading(): void;
+  showGraph(graph: PipelineGraph, mermaidSource: string): void;
+  showError(message: string, stale: boolean): void;
+  showSizeWarning(nodeCount: number, edgeCount: number): void;
+};
+
+export type PreviewOptions = {
+  sourceUri: string;
+  load(signal: AbortSignal): Promise<PipelineGraph>;
+  panel: PreviewPanel;
+  subscribeSave(listener: (uri: string) => void): { dispose(): void };
+  debounceMs?: number;
+  reportError?(error: Error): void;
+};
+
+export class PreviewController {
+  private generation = 0;
+  private active?: AbortController;
+  private saveSubscription?: { dispose(): void };
+  private timer?: ReturnType<typeof setTimeout>;
+  private disposed = false;
+  private lastGraph?: PipelineGraph;
+  private mermaidSource = '';
+  private readonly collapsed = new Set<string>();
+  private allowLargeGraph = false;
+
+  constructor(private readonly options: PreviewOptions) {}
+
+  start(): Promise<void> {
+    if (!this.saveSubscription) {
+      this.saveSubscription = this.options.subscribeSave((uri) => this.onSave(uri));
+    }
+    return this.refresh();
+  }
+
+  private onSave(uri: string): void {
+    if (this.disposed || uri !== this.options.sourceUri) return;
+    this.generation++;
+    this.active?.abort();
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      this.timer = undefined;
+      void this.refresh();
+    }, this.options.debounceMs ?? 250);
+  }
+
+  async refresh(): Promise<void> {
+    if (this.disposed) return;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
+    const generation = ++this.generation;
+    this.active?.abort();
+    const active = new AbortController();
+    this.active = active;
+    this.options.panel.showLoading();
+    try {
+      const graph = await this.options.load(active.signal);
+      if (this.disposed || generation !== this.generation) return;
+      this.lastGraph = graph;
+      this.allowLargeGraph = false;
+      this.showGraphOrWarning();
+    } catch (cause) {
+      if (this.disposed || generation !== this.generation) return;
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      this.options.reportError?.(error);
+      this.options.panel.showError(error.message, Boolean(this.lastGraph));
+    } finally {
+      if (this.active === active) this.active = undefined;
+    }
+  }
+
+  private showGraphOrWarning(): void {
+    const graph = this.lastGraph;
+    if (!graph) return;
+    this.mermaidSource = toMermaid(graph, this.collapsed);
+    if (!this.allowLargeGraph && (graph.nodeCount > 500 || graph.edgeCount > 1_000)) {
+      this.options.panel.showSizeWarning(graph.nodeCount, graph.edgeCount);
+      return;
+    }
+    this.options.panel.showGraph(graph, this.mermaidSource);
+  }
+
+  collapse(scopeId: string): void {
+    if (this.collapsed.has(scopeId)) this.collapsed.delete(scopeId);
+    else this.collapsed.add(scopeId);
+    this.showGraphOrWarning();
+  }
+
+  renderAnyway(): void {
+    this.allowLargeGraph = true;
+    this.showGraphOrWarning();
+  }
+
+  getMermaidSource(): string {
+    return this.mermaidSource;
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.generation++;
+    this.active?.abort();
+    if (this.timer) clearTimeout(this.timer);
+    this.saveSubscription?.dispose();
+  }
+}

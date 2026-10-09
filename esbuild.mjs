@@ -24,3 +24,12 @@ await build({
   target: 'es2022',
 });
 await copyFile('src/webview/index.css', 'dist/webview.css');
+await build({
+  entryPoints: ['test/integration/extension.test.ts'],
+  outfile: 'dist/integration.js',
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node20',
+  external: ['vscode'],
+});
