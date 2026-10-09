@@ -2,7 +2,7 @@
   "name": "kfp-dag-preview",
   "displayName": "KFP DAG Preview",
   "description": "Read-only local DAG preview for Kubeflow Pipelines",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "tolgatuncoglu",
   "repository": {
     "type": "git",

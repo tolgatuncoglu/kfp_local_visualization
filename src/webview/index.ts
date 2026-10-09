@@ -3,6 +3,7 @@ import type { GraphTask, PipelineGraph } from '../core/graph';
 import { mermaidNodeId } from '../core/mermaid';
 import { PreviewStatus } from './previewStatus';
 import { reconcileTaskDetails, tasksIn } from './taskSelection';
+import { readMermaidTheme, watchVsCodeTheme } from './theme';
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
 const vscode = acquireVsCodeApi();
@@ -19,7 +20,21 @@ let renderGeneration = 0;
 let scale = 1;
 const previewStatus = new PreviewStatus();
 
-mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false } });
+let themeSignature = '';
+function applyTheme(): void {
+  const dark = document.body.classList.contains('vscode-dark') ||
+    (document.body.classList.contains('vscode-high-contrast') && !document.body.classList.contains('vscode-high-contrast-light'));
+  const theme = readMermaidTheme(getComputedStyle(document.body), dark);
+  const signature = JSON.stringify(theme);
+  if (signature === themeSignature) return;
+  if (themeSignature) mermaid.mermaidAPI.updateSiteConfig(theme);
+  else mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false }, ...theme });
+  themeSignature = signature;
+  if (currentSource) void render();
+}
+
+applyTheme();
+watchVsCodeTheme(document.body, applyTheme);
 
 function detail(task: GraphTask): void {
   taskList.value = task.id;

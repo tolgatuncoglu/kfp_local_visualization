@@ -22,6 +22,8 @@ The extension looks for the `kfp` command beside the interpreter selected by the
 
 The panel includes zoom and fit controls, a task detail list, nested group collapse controls, and **Copy Mermaid**. Copy Mermaid puts the standalone Mermaid flowchart source on the clipboard. The panel renders Mermaid itself; it does not depend on any Mermaid extension.
 
+The diagram and controls use the active VS Code theme colors, including dark and high contrast themes. An open preview updates when the theme changes.
+
 For a compiled KFP v2 PipelineSpec YAML file, run **KFP: Preview Compiled DAG**. This command reads the YAML directly.
 
 If compilation fails after a successful preview, the last graph stays visible with an **Out of date** message. **Show compiler output** opens the full diagnostic. Graphs over 500 tasks or 1,000 links pause before rendering; select **Render anyway** to continue.
