@@ -1,7 +1,8 @@
 import mermaid from 'mermaid';
-import type { GraphScope, GraphTask, PipelineGraph } from '../core/graph';
+import type { GraphTask, PipelineGraph } from '../core/graph';
 import { mermaidNodeId } from '../core/mermaid';
 import { PreviewStatus } from './previewStatus';
+import { reconcileTaskDetails, tasksIn } from './taskSelection';
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
 const vscode = acquireVsCodeApi();
@@ -19,10 +20,6 @@ let scale = 1;
 const previewStatus = new PreviewStatus();
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false } });
-
-function tasksIn(scope: GraphScope): GraphTask[] {
-  return scope.tasks.flatMap((task) => [task, ...(task.childScope ? tasksIn(task.childScope) : [])]);
-}
 
 function detail(task: GraphTask): void {
   taskList.value = task.id;
@@ -57,9 +54,7 @@ function renderTaskList(graph: PipelineGraph): void {
   const selected = taskList.value;
   taskList.replaceChildren(new Option('Select a task', ''));
   for (const task of tasksIn(graph.root)) taskList.add(new Option(task.label, task.id));
-  const selectedTask = selected ? tasksIn(graph.root).find((task) => task.id === selected) : undefined;
-  if (selectedTask) detail(selectedTask);
-  else taskDetail.replaceChildren();
+  reconcileTaskDetails(graph, selected, detail, () => taskDetail.replaceChildren());
 }
 
 async function render(): Promise<void> {
