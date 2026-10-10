@@ -1,6 +1,7 @@
 {
   "name": "kfp-dag-preview",
   "displayName": "KFP DAG Preview",
+  "icon": "images/icon.png",
   "description": "Read-only local DAG preview for Kubeflow Pipelines",
   "version": "0.2.0",
   "license": "MIT",
