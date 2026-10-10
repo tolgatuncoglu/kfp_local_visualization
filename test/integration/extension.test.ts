@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
+import { subscribeChanges } from '../../src/host/changes';
 
 async function until(check: () => Promise<boolean>, timeoutMs = 8_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -59,4 +60,19 @@ fs.writeFileSync(output, 'pipelineInfo: {name: demo}\\nroot:\\n  dag:\\n    task
   await until(async () => Number(await readFile(countPath, 'utf8')) >= 2);
   assert.equal(Number(await readFile(countPath, 'utf8')), 2, 'saving recompiles once');
   assert.ok((await stat(pipelinePath)).isFile(), 'source file remains present');
+
+  const bracketedPath = join(workspace, 'pipeline[prod].yaml');
+  await writeFile(bracketedPath, 'root:\n  dag:\n    tasks: {}\n');
+  let refreshes = 0;
+  const subscription = subscribeChanges(vscode, vscode.Uri.file(bracketedPath), false, () => { refreshes++; });
+  try {
+    let edit = 0;
+    await until(async () => {
+      await writeFile(bracketedPath, `root:\n  dag:\n    tasks: {}\n# external edit ${++edit}\n`);
+      return refreshes > 0;
+    });
+    assert.ok(refreshes > 0, 'an external edit to a bracketed YAML filename triggers refresh');
+  } finally {
+    subscription.dispose();
+  }
 }

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parsePipelineSpec, type PipelineGraph } from '../../src/core/graph';
+import { toMermaid } from '../../src/core/mermaid';
 import { PreviewController } from '../../src/host/previewController';
 
 const sample = parsePipelineSpec(readFileSync(join(__dirname, '..', 'fixtures', 'simple.yaml'), 'utf8'));
@@ -30,6 +31,31 @@ function harness(load: (signal: AbortSignal) => Promise<PipelineGraph> = async (
     debounceMs: 250,
   });
   return { controller, panel, changed: () => changed(), subscription };
+}
+
+function graphWithEdges(edgeCount: number): PipelineGraph {
+  const tasks = Array.from({ length: 33 }, (_, index) => ({
+    id: `t${index}`, key: `t${index}`, label: `Task ${index}`,
+    componentName: '', inputs: [], dependencies: [],
+  }));
+  const edges = Array.from({ length: edgeCount }, (_, index) => ({
+    from: tasks[Math.floor(index / tasks.length)].id,
+    to: tasks[index % tasks.length].id,
+    kind: 'order' as const,
+    labels: [],
+  }));
+  return { root: { id: 'root', label: 'Pipeline', tasks, edges }, nodeCount: tasks.length, edgeCount };
+}
+
+function graphWithSourceLength(length: number): PipelineGraph {
+  const graph = structuredClone(sample);
+  graph.root.tasks = [graph.root.tasks[0]];
+  graph.root.edges = [];
+  graph.nodeCount = 1;
+  graph.edgeCount = 0;
+  graph.root.tasks[0].label = '';
+  graph.root.tasks[0].label = 'x'.repeat(length - toMermaid(graph).length);
+  return graph;
 }
 
 afterEach(() => vi.useRealTimers());
@@ -99,6 +125,54 @@ describe('PreviewController', () => {
     await vi.advanceTimersByTimeAsync(300);
     expect(h.subscription.dispose).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts an active load and ignores its result after disposal', async () => {
+    const pending = deferred<PipelineGraph>();
+    let signal: AbortSignal | undefined;
+    const h = harness((active) => { signal = active; return pending.promise; });
+    const started = h.controller.start();
+    expect(signal?.aborted).toBe(false);
+    h.controller.dispose();
+    expect(signal?.aborted).toBe(true);
+    expect(h.subscription.dispose).toHaveBeenCalledTimes(1);
+    pending.resolve(sample);
+    await started;
+    expect(h.panel.showGraph).not.toHaveBeenCalled();
+  });
+
+  it('renders 1,000 edges but warns at 1,001, then renders on request', async () => {
+    const allowed = graphWithEdges(1_000);
+    const h = harness(async () => allowed);
+    await h.controller.start();
+    expect(h.panel.showSizeWarning).not.toHaveBeenCalled();
+    expect(h.panel.showGraph).toHaveBeenCalledTimes(1);
+
+    const oversized = graphWithEdges(1_001);
+    const warned = harness(async () => oversized);
+    await warned.controller.start();
+    expect(warned.panel.showSizeWarning).toHaveBeenCalledWith(33, 1_001);
+    expect(warned.panel.showGraph).not.toHaveBeenCalled();
+    warned.controller.renderAnyway();
+    expect(warned.panel.showGraph).toHaveBeenCalledWith(oversized, expect.any(String), undefined);
+  });
+
+  it('renders 50,000 Mermaid characters but warns at 50,001, then renders on request', async () => {
+    const allowed = graphWithSourceLength(50_000);
+    const h = harness(async () => allowed);
+    await h.controller.start();
+    expect(h.controller.getMermaidSource()).toHaveLength(50_000);
+    expect(h.panel.showSizeWarning).not.toHaveBeenCalled();
+    expect(h.panel.showGraph).toHaveBeenCalledTimes(1);
+
+    const oversized = graphWithSourceLength(50_001);
+    const warned = harness(async () => oversized);
+    await warned.controller.start();
+    expect(warned.controller.getMermaidSource()).toHaveLength(50_001);
+    expect(warned.panel.showSizeWarning).toHaveBeenCalledWith(1, 0);
+    expect(warned.panel.showGraph).not.toHaveBeenCalled();
+    warned.controller.renderAnyway();
+    expect(warned.panel.showGraph).toHaveBeenCalledWith(oversized, expect.any(String), undefined);
   });
 
   it('pauses oversized graphs until the user asks to render them', async () => {
