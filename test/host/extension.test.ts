@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
   choices: [] as string[],
   picked: 'Enter function name…',
   panel: undefined as any,
-  panelCallbacks: undefined as any,
+  panels: [] as any[],
   panelDisposals: 0,
   saveDisposals: 0,
   created: 0,
@@ -18,16 +18,24 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../src/host/panel', () => ({
   createDagPanel: (_uri: unknown, callbacks: any) => {
-    state.panelCallbacks = callbacks;
     state.created++;
     state.panel = {
       reveal() { state.reveals++; },
       whenReady: async () => {},
       showLoading() {}, showGraph() {}, showError() {}, showSizeWarning() {},
-      dispose() { state.panelDisposals++; state.panelCallbacks.disposed(); },
+      dispose: vi.fn(() => { state.panelDisposals++; callbacks.disposed(); }),
     };
+    state.panels.push(state.panel);
     return state.panel;
   },
+}));
+
+vi.mock('../../src/host/environment', () => ({
+  resolveKfpExecutable: vi.fn(async () => '/usr/bin/kfp'),
+}));
+
+vi.mock('../../src/host/compiler', () => ({
+  compilePipeline: vi.fn(async () => 'root:\n  dag:\n    tasks:\n      hello: {taskInfo: {name: Hello}}\n'),
 }));
 
 vi.mock('vscode', () => ({
@@ -49,11 +57,12 @@ vi.mock('vscode', () => ({
     onDidSaveTextDocument: (listener: (d: any) => void) => { state.saveListener = listener; return { dispose() { state.saveDisposals++; } }; },
     getWorkspaceFolder: () => ({ uri: { path: '/work', toString: () => 'file:///work' } }),
     createFileSystemWatcher: (pattern: any) => {
-      const w: any = { pattern, handlers: {} as any, dispose() {} };
+      const w: any = { pattern, handlers: {} as any, dispose: vi.fn() };
       for (const n of ['Change', 'Create', 'Delete']) w[`onDid${n}`] = (h: any) => { w.handlers[n] = h; return { dispose() {} }; };
       state.watchers.push(w);
       return w;
     },
+    getConfiguration: () => ({ get: () => undefined }),
     openTextDocument: async () => ({ getText: () => 'root:\n  dag:\n    tasks:\n      hello: {taskInfo: {name: Hello}}\n' }),
   },
   Uri: { joinPath: (base: any, ...parts: string[]) => ({ path: '/work' + parts.join('/').replace(/^\.\./, ''), toString: () => 'file:///work' }) },
@@ -61,6 +70,7 @@ vi.mock('vscode', () => ({
   env: { clipboard: { writeText: async () => {} } },
 }));
 
+import { compilePipeline } from '../../src/host/compiler';
 import { activate, selectPipeline } from '../../src/host/extension';
 
 beforeEach(() => {
@@ -72,7 +82,10 @@ beforeEach(() => {
   state.saveDisposals = 0;
   state.created = 0;
   state.reveals = 0;
+  state.panels.length = 0;
   state.watchers.length = 0;
+  vi.mocked(compilePipeline).mockReset();
+  vi.mocked(compilePipeline).mockResolvedValue('root:\n  dag:\n    tasks:\n      hello: {taskInfo: {name: Hello}}\n');
 });
 
 const yamlUri = { scheme: 'file', fsPath: '/work/pipeline.yaml', path: '/work/pipeline.yaml', toString: () => 'file:///work/pipeline.yaml' };
@@ -108,6 +121,31 @@ describe('extension activation', () => {
     context.subscriptions.forEach((subscription) => subscription.dispose());
     expect(state.panelDisposals).toBe(1);
     expect(state.saveDisposals).toBe(1);
+  });
+
+  it('disposes every panel and watcher and aborts active compiles when three previews are open', async () => {
+    const context = { subscriptions: [] as { dispose(): void }[] };
+    activate(context as any);
+    await state.handlers.get('kfpDagPreview.previewYaml')!(yamlUri);
+    const activeSignals: AbortSignal[] = [];
+    vi.mocked(compilePipeline).mockImplementation((input) => {
+      const signal = input.signal!;
+      activeSignals.push(signal);
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      });
+    });
+    const runPython = state.handlers.get('kfpDagPreview.previewPython')!;
+    const pending = [runPython(pyUri, 'first'), runPython(pyUri, 'second')];
+    await vi.waitFor(() => expect(activeSignals).toHaveLength(2));
+    expect(state.panels).toHaveLength(3);
+    expect(state.watchers).toHaveLength(3);
+    context.subscriptions.forEach((subscription) => subscription.dispose());
+    expect(state.panels.map((panel) => panel.dispose.mock.calls.length)).toEqual([1, 1, 1]);
+    expect(state.watchers.map((watcher) => watcher.dispose.mock.calls.length)).toEqual([1, 1, 1]);
+    expect(state.saveDisposals).toBe(3);
+    expect(activeSignals.map((signal) => signal.aborted)).toEqual([true, true]);
+    await Promise.all(pending);
   });
 
   it('does not trust-gate the YAML preview', async () => {
