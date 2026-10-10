@@ -14,3 +14,4 @@ package-lock.json
 CLAUDE.md
 .vscode-test/**
 .claude/**
+images/screenshot-*.png
