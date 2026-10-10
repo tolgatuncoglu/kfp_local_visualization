@@ -88,6 +88,17 @@ describe('parsePipelineSpec', () => {
     expect(() => parsePipelineSpec(yaml)).toThrow(PipelineSpecError);
   });
 
+  it('rejects exponential component fan-out before materializing it', () => {
+    const depth = 20;
+    let yaml = 'components:\n';
+    for (let i = 0; i < depth; i += 1) {
+      yaml += `  comp-${i}:\n    dag:\n      tasks:\n        a:\n          componentRef: {name: comp-${i + 1}}\n        b:\n          componentRef: {name: comp-${i + 1}}\n`;
+    }
+    yaml += `  comp-${depth}:\n    dag:\n      tasks:\n        leaf: {}\n`;
+    yaml += 'root:\n  dag:\n    tasks:\n      t:\n        componentRef: {name: comp-0}\n';
+    expect(() => parsePipelineSpec(yaml)).toThrow(/more than \d+ tasks/);
+  });
+
   describe('real KFP 2.17 output (real-stress.yaml)', () => {
     const graph = parsePipelineSpec(fixture('real-stress.yaml'));
     const scopeOf = (path: string[]): GraphScope => {

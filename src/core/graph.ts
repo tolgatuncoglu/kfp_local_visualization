@@ -49,6 +49,11 @@ export class PipelineSpecError extends Error {
 }
 
 export const MAX_SCOPE_DEPTH = 64;
+// Component references expand once per use, so a small spec can fan out exponentially; bound the total work.
+export const MAX_EXPANDED_TASKS = 5_000;
+export const MAX_EXPANDED_EDGES = 10_000;
+
+type Budget = { tasks: number; edges: number };
 
 type RecordValue = Record<string, unknown>;
 
@@ -95,6 +100,7 @@ function parseScope(
   label: string,
   components: RecordValue,
   componentStack: ReadonlySet<string>,
+  budget: Budget,
   depth = 0,
 ): GraphScope {
   if (depth > MAX_SCOPE_DEPTH) {
@@ -104,6 +110,9 @@ function parseScope(
   if (!rawTasks) throw new PipelineSpecError(`DAG ${id} has no task map`);
 
   const tasks: GraphTask[] = Object.keys(rawTasks).sort().map((key) => {
+    if (++budget.tasks > MAX_EXPANDED_TASKS) {
+      throw new PipelineSpecError(`Pipeline expands to more than ${MAX_EXPANDED_TASKS} tasks; refusing to render`);
+    }
     const task = record(rawTasks[key]);
     if (!task) throw new PipelineSpecError(`Task ${id}/${key} is invalid`);
     const taskId = `${id}/${key}`;
@@ -139,6 +148,7 @@ function parseScope(
         graphTask.label,
         components,
         new Set([...componentStack, componentName]),
+        budget,
         depth + 1,
       );
     }
@@ -177,6 +187,10 @@ function parseScope(
   const sortedEdges = [...edges.values()].sort((a, b) =>
     a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || a.kind.localeCompare(b.kind),
   );
+  budget.edges += sortedEdges.length;
+  if (budget.edges > MAX_EXPANDED_EDGES) {
+    throw new PipelineSpecError(`Pipeline expands to more than ${MAX_EXPANDED_EDGES} edges; refusing to render`);
+  }
   for (const edge of sortedEdges) edge.labels.sort();
   return { id, label, tasks, edges: sortedEdges };
 }
@@ -193,7 +207,7 @@ export function parsePipelineSpec(yamlText: string): PipelineGraph {
   if (!rootDag) throw new PipelineSpecError('Expected KFP v2 PipelineSpec with root.dag');
   const components = record(spec?.components) ?? {};
   const label = string(record(spec?.pipelineInfo)?.name) ?? 'Pipeline';
-  const root = parseScope(rootDag, 'root', label, components, new Set());
+  const root = parseScope(rootDag, 'root', label, components, new Set(), { tasks: 0, edges: 0 });
   const count = (scope: GraphScope): [number, number] =>
     scope.tasks.reduce<[number, number]>(
       ([nodes, edges], task) => {

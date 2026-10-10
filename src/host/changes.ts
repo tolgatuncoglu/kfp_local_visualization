@@ -18,9 +18,12 @@ export function subscribeChanges(vscode: typeof vscodeApi, uri: vscodeApi.Uri, p
   const parent = vscode.Uri.joinPath(uri, '..');
   const pattern = python
     ? new vscode.RelativePattern(folder ?? parent, '**/*.py')
-    : new vscode.RelativePattern(parent, uri.path.slice(uri.path.lastIndexOf('/') + 1));
+    : new vscode.RelativePattern(parent, '*');
   const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-  const onEvent = (changed: vscodeApi.Uri) => { if (!isIgnoredPath(changed.path)) listener(); };
+  // The YAML filename is never used as a glob (it may contain metacharacters): watch the folder, match the exact URI.
+  const onEvent = (changed: vscodeApi.Uri) => {
+    if (python ? !isIgnoredPath(changed.path) : changed.toString() === key) listener();
+  };
   disposables.push(watcher, watcher.onDidChange(onEvent), watcher.onDidCreate(onEvent));
   if (python) disposables.push(watcher.onDidDelete(onEvent));
   return { dispose: () => disposables.forEach((item) => item.dispose()) };

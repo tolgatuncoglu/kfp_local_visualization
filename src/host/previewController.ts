@@ -80,7 +80,7 @@ export class PreviewController {
     const graph = this.lastGraph;
     if (!graph) return;
     this.mermaidSource = toMermaid(graph, this.collapsed);
-    if (!this.allowLargeGraph && (graph.nodeCount > 500 || graph.edgeCount > 1_000)) {
+    if (!this.allowLargeGraph && (graph.nodeCount > 500 || graph.edgeCount > 1_000 || this.mermaidSource.length > 50_000)) {
       this.options.panel.showSizeWarning(graph.nodeCount, graph.edgeCount);
       return;
     }
