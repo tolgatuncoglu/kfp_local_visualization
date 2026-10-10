@@ -33,6 +33,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(output);
 
   const openPanels = new Map<string, DagPanel>();
+  // One aggregate disposer: panels remove themselves from openPanels on disposal, so iterate a copy.
+  context.subscriptions.push({ dispose: () => [...openPanels.values()].forEach((panel) => panel.dispose()) });
 
   async function openPreview(uri: vscode.Uri, python: boolean, functionName: string | undefined, load: (signal: AbortSignal) => Promise<ReturnType<typeof parsePipelineSpec>>): Promise<void> {
     const key = `${uri.toString()}\n${functionName ?? ''}`;
@@ -53,12 +55,9 @@ export function activate(context: vscode.ExtensionContext): void {
         closed = true;
         controller?.dispose();
         if (openPanels.get(key) === panel) openPanels.delete(key);
-        const index = context.subscriptions.indexOf(panel);
-        if (index >= 0) context.subscriptions.splice(index, 1);
       },
     });
     openPanels.set(key, panel);
-    context.subscriptions.push(panel);
     await panel.whenReady();
     if (closed) return;
     controller = new PreviewController({

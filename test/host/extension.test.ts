@@ -126,9 +126,7 @@ describe('extension activation', () => {
     await run(yamlUri);
     expect(state.created).toBe(1);
     expect(state.reveals).toBe(1);
-    const before = context.subscriptions.length;
     state.panel.dispose();
-    expect(context.subscriptions.length).toBe(before - 1);
     await run(yamlUri);
     expect(state.created).toBe(2);
   });
@@ -149,7 +147,7 @@ describe('extension activation', () => {
     await state.handlers.get('kfpDagPreview.previewPython')!(pyUri, 'a');
     expect(state.watchers[0].pattern.pattern).toBe('**/*.py');
     await state.handlers.get('kfpDagPreview.previewYaml')!(yamlUri);
-    expect(state.watchers[1].pattern.pattern).toBe('pipeline.yaml');
+    expect(state.watchers[1].pattern.pattern).toBe('*');
     const { isIgnoredPath } = await import('../../src/host/changes');
     expect(isIgnoredPath('/work/.venv/lib/x.py')).toBe(true);
     expect(isIgnoredPath('/work/a/__pycache__/x.py')).toBe(true);

@@ -28,7 +28,7 @@ function applyTheme(): void {
   const signature = JSON.stringify(theme);
   if (signature === themeSignature) return;
   if (themeSignature) mermaid.mermaidAPI.updateSiteConfig(theme);
-  else mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false }, ...theme });
+  else mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', flowchart: { htmlLabels: false }, maxEdges: 10_000, maxTextSize: 2_000_000, ...theme });
   themeSignature = signature;
   if (currentSource) void render();
 }
