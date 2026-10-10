@@ -2,6 +2,10 @@
 
 A read-only VS Code preview for Kubeflow Pipelines v2. Open a Python pipeline and see its compiled DAG beside the code. The preview refreshes when the pipeline file changes, whether you save in VS Code or an external tool edits it. Mermaid is bundled, so no separate diagram extension or Kubeflow cluster is needed.
 
+![A 15-task pipeline fitted in the DAG preview beside its Python source](https://raw.githubusercontent.com/tolgatuncoglu/kfp_local_visualization/main/images/screenshot-fit.png)
+
+![The same DAG zoomed in, with the task details panel showing the selected task](https://raw.githubusercontent.com/tolgatuncoglu/kfp_local_visualization/main/images/screenshot-detail.png)
+
 ## Install
 
 Install the local package with **Extensions: Install from VSIX…** in VS Code and select `kfp-dag-preview.vsix`. To build it from source, run `npm ci` and `npm run package`.

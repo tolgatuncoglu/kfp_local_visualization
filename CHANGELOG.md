@@ -20,6 +20,7 @@
 - Dependencies on tasks that do not exist in a scope no longer render as ghost nodes.
 - Failed Mermaid renders no longer leave error elements in the page.
 - A decorator on a `class` no longer marks the following function as a pipeline.
+- The preview button in the editor title bar no longer fails with `Pipeline function or component "[object Object]" not found`.
 
 ## 0.1.1
 

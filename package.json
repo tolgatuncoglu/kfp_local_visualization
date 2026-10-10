@@ -1,11 +1,12 @@
 {
   "name": "kfp-dag-preview",
   "displayName": "KFP DAG Preview",
+  "icon": "images/icon.png",
   "description": "Read-only local DAG preview for Kubeflow Pipelines",
   "version": "0.2.0",
   "license": "MIT",
   "author": "Tolga Tuncoglu",
-  "publisher": "tolgatuncoglu",
+  "publisher": "TolgaTuncoglu",
   "repository": {
     "type": "git",
     "url": "https://github.com/tolgatuncoglu/kfp_local_visualization.git"
