@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext): void {
     await controller.start();
   }
 
-  context.subscriptions.push(vscode.commands.registerCommand('kfpDagPreview.previewPython', async (provided?: vscode.Uri, requestedFunctionName?: string) => {
+  context.subscriptions.push(vscode.commands.registerCommand('kfpDagPreview.previewPython', async (provided?: vscode.Uri, requested?: unknown) => {
     if (!vscode.workspace.isTrusted) {
       await vscode.window.showErrorMessage('KFP DAG Preview needs a trusted workspace to compile Python pipeline code.');
       return;
@@ -82,7 +82,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     try {
       const document = await vscode.workspace.openTextDocument(uri);
-      const functionName = requestedFunctionName ?? await selectPipeline(document.getText());
+      // Editor-title menus pass a context object as the second argument, not a function name.
+      const functionName = typeof requested === 'string' && requested ? requested : await selectPipeline(document.getText());
       if (!functionName) return;
       await openPreview(uri, true, functionName, async (signal) => {
         const configured = vscode.workspace.getConfiguration('kfpDagPreview', uri).get<string>('kfpExecutable');

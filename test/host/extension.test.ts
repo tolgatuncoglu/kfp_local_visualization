@@ -169,6 +169,12 @@ describe('extension activation', () => {
     expect(state.created).toBe(2);
   });
 
+  it('ignores the context object editor-title menus pass as the second argument', async () => {
+    activate({ subscriptions: [] } as any);
+    await state.handlers.get('kfpDagPreview.previewPython')!(pyUri, { groupId: 1 });
+    expect(vi.mocked(compilePipeline).mock.calls.at(-1)![0].functionName).toBe('manual_pipeline');
+  });
+
   it('dedupes Python previews per function name', async () => {
     activate({ subscriptions: [] } as any);
     const run = state.handlers.get('kfpDagPreview.previewPython')!;
